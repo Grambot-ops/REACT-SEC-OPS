@@ -77,6 +77,22 @@ resource "aws_ecs_task_definition" "api" {
         }
       ]
       # This is the magic! Inject secrets as environment variables.
+      environment = [
+        {
+          name  = "DB_HOST"
+          value = aws_db_instance.main.address
+        },
+        {
+          name  = "DB_PORT"
+          value = tostring(aws_db_instance.main.port)
+        },
+        {
+          name  = "DB_NAME"
+          value = aws_db_instance.main.db_name
+        }
+      ]
+      
+      # Inject ONLY SECRET data using the 'secrets' integration.
       secrets = [
         {
           name      = "DB_USER"
@@ -85,18 +101,6 @@ resource "aws_ecs_task_definition" "api" {
         {
           name      = "DB_PASSWORD"
           valueFrom = "${aws_secretsmanager_secret.db_creds.arn}:password::"
-        },
-        {
-          name      = "DB_HOST"
-          valueFrom = "${aws_secretsmanager_secret.db_creds.arn}:host::"
-        },
-        {
-          name      = "DB_NAME"
-          valueFrom = "${aws_secretsmanager_secret.db_creds.arn}:dbname::"
-        },
-        {
-          name      = "DB_PORT"
-          valueFrom = "${aws_secretsmanager_secret.db_creds.arn}:port::"
         }
       ]
       logConfiguration = {

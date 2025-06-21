@@ -1,12 +1,6 @@
 # terraform/main.tf
 
-# configure the aws provider
-
-provider "aws" {
-  region = "us-east-1"
-  
-}
-
+# we configured the providers in providers.tf
 # vpc - Isolated network for our application
 
 resource "aws_vpc" "main" {

@@ -16,9 +16,12 @@ resource "aws_s3_bucket_public_access_block" "frontend" {
 }
 
 # 2. CloudFront Origin Access Identity (OAI)
-# This creates a special CloudFront "user" that can access the private S3 bucket
-resource "aws_cloudfront_origin_access_identity" "oai" {
-  comment = "OAI for React-Sec-Ops frontend"
+resource "aws_cloudfront_origin_access_control" "oac" {
+  name                              = "ReactSecDeploy-OAC"
+  description                       = "Origin Access Control for S3 bucket"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
 }
 
 # Give the OAI permission to read from the S3 bucket
@@ -30,10 +33,16 @@ resource "aws_s3_bucket_policy" "frontend" {
       {
         Effect    = "Allow"
         Principal = {
-          AWS = aws_cloudfront_origin_access_identity.oai.iam_arn
+          Service = "cloudfront.amazonaws.com"
         }
         Action    = "s3:GetObject"
         Resource  = "${aws_s3_bucket.frontend.arn}/*"
+        Condition = {
+          StringEquals = {
+            # This condition makes it secure, only allowing YOUR distribution
+            "AWS:SourceArn" = aws_cloudfront_distribution.main.arn
+          }
+        }
       }
     ]
   })
@@ -51,9 +60,8 @@ resource "aws_cloudfront_distribution" "main" {
     domain_name = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_id   = "S3-${aws_s3_bucket.frontend.id}"
 
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.oai.cloudfront_access_identity_path
-    }
+    # Use the new OAC ID instead of the old OAI config
+    origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
   }
 
   # ALB Origin for the API

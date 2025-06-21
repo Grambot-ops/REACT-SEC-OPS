@@ -2,7 +2,7 @@
 
 # 1. Internet gateway for public subnets
 resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main
+  vpc_id = aws_vpc.main.id
 
   tags = {
     Name =  "React-sec-ops-IGW"
@@ -37,10 +37,13 @@ resource "aws_route_table_association" "public_b" {
 # 3.Nat gateway for private Subnets (allows outbound, not inbound)
 # needs an elastic ip
 
-// says that this is deprecated it is no longer required
-# resource "aws_eip" "nat" {
-#   vpc = true
-# }
+// says that this is deprecated it is no longer required but we are using it
+resource "aws_eip" "nat" {
+  domain = "vpc"
+  tags = {
+    Name = "react-sec-ops-NAT-EIP"
+  }
+}
 
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat.id
