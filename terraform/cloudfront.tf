@@ -1,151 +1,61 @@
-# terraform/cloudfront.tf
+# terraform/cloudfront.tf (Now just for the S3 bucket)
 
-# 1. S3 Bucket for the React build files
+# 1. S3 Bucket for the React build files.
 resource "aws_s3_bucket" "frontend" {
-  bucket = "react-sec-ops-frontend-bucket-reactsecops2" # Must be globally unique!
+  bucket = "react-sec-deploy-frontend-bucket-reactsecops2" # Make sure this is globally unique!
 }
 
-# Block all public access to the bucket directly
+# 2. Explicitly CONFIGURE the Public Access Block for this bucket.
+# We are telling AWS that for THIS BUCKET, it's okay to have a public policy.
 resource "aws_s3_bucket_public_access_block" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
+  block_public_acls       = false # Must be false to allow public policies
+  block_public_policy     = false # THIS IS THE KEY: Set to false
+  ignore_public_acls      = false # Must be false to allow public policies
+  restrict_public_buckets = false # Must be false to allow public policies
 }
 
-# 2. CloudFront Origin Access Identity (OAI)
-resource "aws_cloudfront_origin_access_control" "oac" {
-  name                              = "ReactSecDeploy-OAC"
-  description                       = "Origin Access Control for S3 bucket"
-  origin_access_control_origin_type = "s3"
-  signing_behavior                  = "always"
-  signing_protocol                  = "sigv4"
+
+# 3. Modern resource for S3 website configuration.
+resource "aws_s3_bucket_website_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  index_document {
+    suffix = "index.html"
+  }
+  error_document {
+    key = "index.html"
+  }
+  # This resource depends on the public access block being configured first.
+  depends_on = [aws_s3_bucket_public_access_block.frontend]
 }
 
-# Give the OAI permission to read from the S3 bucket
-resource "aws_s3_bucket_policy" "frontend" {
+# 4. S3 Bucket Policy to allow public read access.
+# This will now succeed because the block public access setting allows it.
+resource "aws_s3_bucket_policy" "frontend_public_read" {
   bucket = aws_s3_bucket.frontend.id
   policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect    = "Allow"
-        Principal = {
-          Service = "cloudfront.amazonaws.com"
-        }
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.frontend.arn}/*"
-        Condition = {
-          StringEquals = {
-            # This condition makes it secure, only allowing YOUR distribution
-            "AWS:SourceArn" = aws_cloudfront_distribution.main.arn
-          }
-        }
-      }
-    ]
+    Version = "2012-10-17",
+    Statement = [{
+      Effect    = "Allow",
+      Principal = "*",
+      Action    = "s3:GetObject",
+      Resource  = "${aws_s3_bucket.frontend.arn}/*"
+    }]
   })
+  # This resource depends on the public access block being configured first.
+  depends_on = [aws_s3_bucket_public_access_block.frontend]
 }
 
 
-# 3. CloudFront Distribution
-resource "aws_cloudfront_distribution" "main" {
-  enabled             = true
-  is_ipv6_enabled     = true
-  default_root_object = "index.html"
+# --- ALL CLOUDFRONT RESOURCES HAVE BEEN REMOVED ---
+# --- The aws_lb_listener_rule is also removed as it depended on CloudFront's logic ---
+# --- We will re-create a simpler listener rule in ecs.tf ---
 
-  # S3 Origin for the React App
-  origin {
-    domain_name = aws_s3_bucket.frontend.bucket_regional_domain_name
-    origin_id   = "S3-${aws_s3_bucket.frontend.id}"
 
-    # Use the new OAC ID instead of the old OAI config
-    origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
-  }
-
-  # ALB Origin for the API
-  origin {
-    domain_name = aws_lb.main.dns_name
-    origin_id   = "ALB-${aws_lb.main.name}"
-
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "http-only" # Our ALB listens on HTTP
-      origin_ssl_protocols   = ["TLSv1.2"]
-    }
-  }
-
-  default_cache_behavior {
-    target_origin_id       = "S3-${aws_s3_bucket.frontend.id}" # Default to S3
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    viewer_protocol_policy = "redirect-to-https"
-
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
-    }
-  }
-
-  # API Cache Behavior for /api/* paths
-  ordered_cache_behavior {
-    path_pattern           = "/api/*"
-    target_origin_id       = "ALB-${aws_lb.main.name}" # Route to ALB
-    allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    viewer_protocol_policy = "redirect-to-https"
-
-    # Forward all headers, cookies, and query strings to the API
-    forwarded_values {
-      query_string = true
-      headers      = ["*"]
-      cookies {
-        forward = "all"
-      }
-    }
-  }
-
-  # Error handling for single-page apps (React Router)
-  custom_error_response {
-    error_code            = 403
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 10
-  }
-
-  restrictions {
-    geo_restriction {
-      restriction_type = "none"
-    }
-  }
-
-  viewer_certificate {
-    cloudfront_default_certificate = true
-  }
-}
-
-# 4. ALB Listener Rule for API
-resource "aws_lb_listener_rule" "api" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 100
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.api.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/api/*"]
-    }
-  }
-}
-
-# Output the CloudFront URL so we know where to access our app
-output "cloudfront_domain_name" {
-  value = aws_cloudfront_distribution.main.domain_name
+# --- NEW OUTPUTS ---
+output "frontend_s3_website_url" {
+  description = "The public URL for the frontend React app."
+  value       = "http://${aws_s3_bucket_website_configuration.frontend.website_endpoint}"
 }

@@ -1,17 +1,27 @@
 // backend-api/index.js
 const express = require("express");
 const { Pool } = require("pg");
-const cors = require("cors");
+const cors = require("cors"); // Make sure you have `npm install cors`
 
 const app = express();
 app.use(express.json());
 
-// IMPORTANT: Configure CORS to allow requests from your future CloudFront domain
-// For now, we can be permissive, but tighten this in production.
-app.use(cors());
+// --- THIS IS THE CRITICAL CORS CONFIGURATION ---
+// We will get these URLs from our Terraform output later.
+// For now, you can leave them as placeholders or update them after `terraform apply`.
+const S3_WEBSITE_URL =
+  process.env.S3_WEBSITE_URL ||
+  "http://react-sec-deploy-frontend-bucket-reactsecops2.s3-website-us-east-1.amazonaws.com";
+
+const corsOptions = {
+  origin: S3_WEBSITE_URL,
+  optionsSuccessStatus: 200, // For legacy browser support
+};
+
+app.use(cors(corsOptions));
+// --- END OF CORS CONFIGURATION ---
 
 // The app will get credentials from environment variables
-// provided by ECS and Secrets Manager
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -25,10 +35,9 @@ app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
 
-// A simple endpoint to get items
+// API endpoints
 app.get("/api/items", async (req, res) => {
   try {
-    // Example: create table if not exists
     await pool.query(
       "CREATE TABLE IF NOT EXISTS items (id SERIAL PRIMARY KEY, name VARCHAR(255))"
     );
@@ -40,7 +49,6 @@ app.get("/api/items", async (req, res) => {
   }
 });
 
-// A simple endpoint to add an item
 app.post("/api/items", async (req, res) => {
   try {
     const { name } = req.body;

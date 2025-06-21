@@ -8,9 +8,8 @@ resource "random_password" "db_password" {
 }
 
 # 2. Store ONLY the credentials (username/password) in Secrets Manager.
-# This resource no longer depends on the database instance, breaking the cycle.
 resource "aws_secretsmanager_secret" "db_creds" {
-  name = "ReactSecOps/DbCredentials"
+  name = "ReactSecDeploy/DbCredentials"
 }
 
 resource "aws_secretsmanager_secret_version" "db_creds" {
@@ -21,30 +20,30 @@ resource "aws_secretsmanager_secret_version" "db_creds" {
   })
 }
 
-# 3. DB Subnet Group - Tells RDS which subnets to live in (no change here)
+# 3. DB Subnet Group - Tells RDS which subnets to live in
 resource "aws_db_subnet_group" "main" {
-  name       = "react-sec-ops-db-subnet-group"
+  name       = "react-sec-deploy-db-subnet-group"
   subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
 
   tags = {
-    Name = "React-Sec-Ops DB Subnet Group"
+    Name = "React-Sec-Deploy DB Subnet Group"
   }
 }
 
 # 4. The RDS PostgreSQL Database Instance
-# Now, this resource can be created because its dependency (the secret) can be created first.
 resource "aws_db_instance" "main" {
-  identifier           = "react-sec-ops-db"
+  identifier           = "react-sec-deploy-db"
   allocated_storage    = 20
   storage_type         = "gp2"
   engine               = "postgres"
-  engine_version       = "13.14"
-  instance_class       = "db.t3.micro" # Small instance for the lab
-  db_name              = "webappdb"    # We define the dbname here directly
+  # Updated to our next best guess for an available version
+  engine_version       = "17"
+  instance_class       = "db.t3.micro"
+  db_name              = "webappdb"
   username             = jsondecode(aws_secretsmanager_secret_version.db_creds.secret_string)["username"]
   password             = jsondecode(aws_secretsmanager_secret_version.db_creds.secret_string)["password"]
   db_subnet_group_name = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.database.id]
   skip_final_snapshot  = true
-  publicly_accessible  = false # CRITICAL: Ensure it's not on the public internet
+  publicly_accessible  = false
 }
