@@ -2,7 +2,7 @@
 
 # 1. S3 Bucket for the React build files
 resource "aws_s3_bucket" "frontend" {
-  bucket = "react-sec-ops-frontend-bucket-reactsecops1" # Must be globally unique!
+  bucket = "react-sec-ops-frontend-bucket-reactsecops2" # Must be globally unique!
 }
 
 # Block all public access to the bucket directly

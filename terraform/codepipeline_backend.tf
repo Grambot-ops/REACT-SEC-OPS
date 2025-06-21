@@ -96,5 +96,5 @@ resource "aws_codepipeline" "backend_api" {
 
 # We need an S3 bucket for pipeline artifacts
 resource "aws_s3_bucket" "codepipeline_artifacts" {
-  bucket = "react-sec-ops-pipeline-artifacts-<UNIQUE-SUFFIX>" # Must be globally unique!
+  bucket = "react-sec-ops-pipeline-artifacts-reactsecops1" # Must be globally unique!
 }
