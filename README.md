@@ -62,65 +62,54 @@ The "React-Sec-Ops" project consists of three distinct tiers:
 This diagram illustrates the intended architecture. The CI/CD and CloudFront components, while shown as automated, must be created manually as per the lab's limitations.
 
 ```mermaid
-graph LR
+graph TD
     %% User
     User["User (Browser)"]
 
     %% Presentation Tier
-    CF["CloudFront (Manual)"]:::presentation
-    S3["S3 Bucket (IaC)"]:::presentation
+    CF["CloudFront (Manual Setup)"]
+    S3["S3 Bucket (IaC)"]
 
     %% Application Tier
-    ALB["App Load Balancer"]:::application
-    ECS["ECS Fargate (Node.js API)"]:::application
-    Secrets["Secrets Manager"]:::application
+    ALB["App Load Balancer"]
+    ECS["ECS Fargate (Node.js API)"]
+    Secrets["Secrets Manager"]
 
     %% Data Tier
-    DB["Aurora PostgreSQL"]:::data
+    DB["Aurora PostgreSQL"]
 
-    %% DevOps
-    SourceCode["Backend Repo"]:::repos
-    FrontendCode["Frontend Repo"]:::repos
+    %% DevOps / CI/CD
+    SourceCode["Backend Repo"]
+    FrontendCode["Frontend Repo"]
+    BackendPipeline["Backend Pipeline"]
+    FrontendPipeline["Frontend Pipeline"]
+    ECR["ECR Registry"]
 
-    BackendPipeline["Backend Pipeline"]:::devops
-    FrontendPipeline["Frontend Pipeline"]:::devops
-    ECR["ECR Registry"]:::devops
-
-    %% Flow
+    %% Flows
     User -->|HTTPS| CF
-    CF -->|Static| S3
-    CF -->|API| ALB
+    CF -->|Static Files| S3
+    CF -->|API Call| ALB
     ALB --> ECS
     ECS --> DB
     ECS --> Secrets
 
     SourceCode --> BackendPipeline
-    BackendPipeline -->|Build| ECR
-    BackendPipeline -->|Deploy| ECS
+    BackendPipeline --> ECR
+    BackendPipeline --> ECS
 
     FrontendCode --> FrontendPipeline
-    FrontendPipeline -->|Deploy| S3
-    FrontendPipeline -->|Invalidate| CF
+    FrontendPipeline --> S3
+    FrontendPipeline --> CF
 
-    %% Legend at bottom
-    subgraph Legend [🎨 Legend (Color Key)]
-        L1["🟣 Presentation Tier"]:::presentation
-        L2["🟩 Application Tier"]:::application
-        L3["🔵 Data Tier"]:::data
-        L4["🟡 DevOps / Pipelines"]:::devops
-        L5["🟠 Code Repositories"]:::repos
-        L6["⚪ User / Browser"]:::user
+    %% Legend (plain, no class or emoji)
+    subgraph Legend [Legend: Color Scheme (not shown in GitHub)]
+        A1["Presentation Tier: CloudFront, S3"]
+        A2["Application Tier: ALB, ECS, Secrets"]
+        A3["Data Tier: Aurora DB"]
+        A4["DevOps: Pipelines, ECR"]
+        A5["Repositories: Backend, Frontend"]
+        A6["User: Browser"]
     end
-
-    %% Styles
-    classDef presentation fill:#f9f,stroke:#333;
-    classDef application fill:#cfc,stroke:#333;
-    classDef data fill:#ccf,stroke:#333;
-    classDef devops fill:#ffe599,stroke:#333;
-    classDef repos fill:#fff2cc,stroke:#333;
-    classDef user fill:#eee,stroke:#333;
-
-    class User user
 
 ```
 
