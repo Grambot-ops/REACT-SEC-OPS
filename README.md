@@ -63,52 +63,55 @@ This diagram illustrates the intended architecture. The CI/CD and CloudFront com
 
 ```mermaid
 graph TD
-    subgraph "User's Browser"
-        User
+    %% User
+    User["User (Browser)"]
+
+    %% Presentation Tier
+    subgraph Presentation["Presentation Tier"]
+        CF["CloudFront Distribution (Manual Setup)"]
+        S3["S3 Bucket (IaC)"]
     end
 
-    subgraph "AWS Cloud"
-        subgraph "Presentation Tier"
-            CF["CloudFront Distribution (Manual Setup)"]
-        end
-
-        subgraph "VPC: 10.0.0.0/16 (IaC Deployed)"
-            subgraph "Public Subnets"
-                ALB["Application Load Balancer"]
-            end
-            subgraph "Private Subnets (Application Tier)"
-                ECS["ECS Fargate Service (Node.js/Express Container)"]
-            end
-            subgraph "Private Subnets (Data Tier)"
-                DB["Aurora PostgreSQL Cluster"]
-            end
-        end
-
-        subgraph "CI/CD & DevOps (Manual Setup)"
-            SourceCode --> BackendPipeline
-            BackendPipeline -- Builds & Scans --> ECR["ECR Registry (IaC Deployed)"]
-            BackendPipeline -- Deploys --> ECS
-
-            FrontendCode --> FrontendPipeline
-            FrontendPipeline -- Builds & Deploys --> S3["S3 Bucket (IaC Deployed)"]
-            FrontendPipeline -- Invalidates --> CF
-
-            subgraph "Source Code Repos"
-                direction LR
-                SourceCode["Git User"]
-                FrontendCode["Git User"]
-            end
-        end
-
-        Secrets["AWS Secrets Manager (IaC Deployed)"]
+    %% Application Tier
+    subgraph Application["Application Tier"]
+        ALB["Application Load Balancer"]
+        ECS["ECS Fargate (Node.js App)"]
+        Secrets["AWS Secrets Manager (IaC)"]
     end
 
-    User -- HTTPS Request --> CF
-    CF -- Serves Static Files --> S3
-    CF -- Fetches Data via API --> ALB
-    ALB -- Forwards /api/* traffic --> ECS
-    ECS -- Reads/Writes Data --> DB
-    ECS -- Reads Secrets --> Secrets
+    %% Data Tier
+    subgraph Data["Data Tier"]
+        DB["Aurora PostgreSQL Cluster"]
+    end
+
+    %% DevOps / CI/CD
+    subgraph DevOps["CI/CD & DevOps"]
+        subgraph Repos["Source Code Repositories"]
+            SourceCode["Backend Repo"]
+            FrontendCode["Frontend Repo"]
+        end
+
+        BackendPipeline["Backend CI/CD Pipeline"]
+        FrontendPipeline["Frontend CI/CD Pipeline"]
+        ECR["ECR Registry (IaC)"]
+    end
+
+    %% User interactions
+    User -->|HTTPS Request| CF
+    CF -->|Static Files| S3
+    CF -->|API Request| ALB
+    ALB -->|Forward to ECS| ECS
+    ECS -->|DB Ops| DB
+    ECS -->|Read Secrets| Secrets
+
+    %% CI/CD connections
+    SourceCode --> BackendPipeline
+    BackendPipeline -->|Build & Push| ECR
+    BackendPipeline -->|Deploy| ECS
+
+    FrontendCode --> FrontendPipeline
+    FrontendPipeline -->|Build & Deploy| S3
+    FrontendPipeline -->|Invalidate| CF
 ```
 
 ## Key Technologies
