@@ -63,6 +63,16 @@ This diagram illustrates the intended architecture. The CI/CD and CloudFront com
 
 ```mermaid
 graph TD
+    %% Legend (drawn as a separate subgraph)
+    subgraph Legend["🎨 Legend (Color Scheme)"]
+        L1["🟣 Pink = Presentation Tier"]
+        L2["🟩 Green = Application Tier"]
+        L3["🔵 Blue = Data Tier"]
+        L4["🟡 Yellow = DevOps / Pipelines"]
+        L5["🟠 Beige = Code Repositories"]
+        L6["⚪ Gray = User / Browser"]
+    end
+
     %% User
     User["User (Browser)"]
 
@@ -112,6 +122,33 @@ graph TD
     FrontendCode --> FrontendPipeline
     FrontendPipeline -->|Build & Deploy| S3
     FrontendPipeline -->|Invalidate| CF
+
+    %% Color Styling
+    style CF fill:#f9f,stroke:#333,stroke-width:1px
+    style S3 fill:#f9f,stroke:#333,stroke-width:1px
+
+    style ALB fill:#cfc,stroke:#333,stroke-width:1px
+    style ECS fill:#cfc,stroke:#333,stroke-width:1px
+    style Secrets fill:#cfc,stroke:#333,stroke-width:1px
+
+    style DB fill:#ccf,stroke:#333,stroke-width:1px
+
+    style BackendPipeline fill:#ffe599,stroke:#333,stroke-width:1px
+    style FrontendPipeline fill:#ffe599,stroke:#333,stroke-width:1px
+    style ECR fill:#ffe599,stroke:#333,stroke-width:1px
+
+    style SourceCode fill:#fff2cc,stroke:#333,stroke-width:1px
+    style FrontendCode fill:#fff2cc,stroke:#333,stroke-width:1px
+
+    style User fill:#eee,stroke:#333,stroke-width:1px
+
+    %% Legend colors
+    style L1 fill:#f9f,stroke:#999,stroke-width:1px
+    style L2 fill:#cfc,stroke:#999,stroke-width:1px
+    style L3 fill:#ccf,stroke:#999,stroke-width:1px
+    style L4 fill:#ffe599,stroke:#999,stroke-width:1px
+    style L5 fill:#fff2cc,stroke:#999,stroke-width:1px
+    style L6 fill:#eee,stroke:#999,stroke-width:1px
 ```
 
 ## Key Technologies
