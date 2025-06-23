@@ -63,53 +63,71 @@ This diagram illustrates the intended architecture. The CI/CD and CloudFront com
 
 ```mermaid
 graph TD
-    %% User
-    User["User - Browser"]
+    %% Styling Classes
+    classDef userStyle fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000
+    classDef presentationStyle fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#000
+    classDef applicationStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px,color:#000
+    classDef dataStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#000
+    classDef devopsStyle fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:#000
+    classDef repoStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef legendStyle fill:#fafafa,stroke:#666,stroke-width:1px,color:#666,stroke-dasharray: 5 5
+
+    %% User Layer
+    User["👤 User<br/>Browser"]:::userStyle
 
     %% Presentation Tier
-    CF["CloudFront - Manual Setup"]
-    S3["S3 Bucket - IaC"]
+    CF["☁️ CloudFront<br/>CDN Distribution<br/>(Manual Setup)"]:::presentationStyle
+    S3["🪣 S3 Bucket<br/>Static Website<br/>(IaC Managed)"]:::presentationStyle
 
     %% Application Tier
-    ALB["App Load Balancer"]
-    ECS["ECS Fargate - Node.js API"]
-    Secrets["Secrets Manager"]
+    ALB["⚖️ Application<br/>Load Balancer<br/>(Auto Scaling)"]:::applicationStyle
+    ECS["🐳 ECS Fargate<br/>Node.js API<br/>(Containerized)"]:::applicationStyle
+    Secrets["🔐 AWS Secrets<br/>Manager<br/>(Encrypted)"]:::applicationStyle
 
     %% Data Tier
-    DB["Aurora PostgreSQL"]
+    DB["🗄️ Aurora PostgreSQL<br/>Multi-AZ<br/>(Managed RDS)"]:::dataStyle
 
-    %% DevOps / CI/CD
-    SourceCode["Backend Repo"]
-    FrontendCode["Frontend Repo"]
-    BackendPipeline["Backend Pipeline"]
-    FrontendPipeline["Frontend Pipeline"]
-    ECR["ECR Registry"]
+    %% DevOps / CI/CD Pipeline
+    ECR["📦 ECR Registry<br/>Container Images<br/>(Private Repo)"]:::devopsStyle
+    BackendPipeline["🔄 Backend Pipeline<br/>CI/CD Automation<br/>(Build → Test → Deploy)"]:::devopsStyle
+    FrontendPipeline["🔄 Frontend Pipeline<br/>CI/CD Automation<br/>(Build → Deploy)"]:::devopsStyle
 
-    %% Flows
-    User -->|HTTPS| CF
-    CF -->|Static Files| S3
-    CF -->|API Call| ALB
-    ALB --> ECS
-    ECS --> DB
-    ECS --> Secrets
+    %% Source Code Repositories
+    BackendRepo["📁 Backend Repository<br/>Node.js Source Code<br/>(Git)"]:::repoStyle
+    FrontendRepo["📁 Frontend Repository<br/>React/Static Assets<br/>(Git)"]:::repoStyle
 
-    SourceCode --> BackendPipeline
-    BackendPipeline --> ECR
-    BackendPipeline --> ECS
+    %% Main Application Flow
+    User ---|"HTTPS Requests"| CF
+    CF ---|"Static Assets<br/>(HTML, CSS, JS)"| S3
+    CF ---|"API Calls<br/>/api/*"| ALB
+    ALB ---|"Load Balanced<br/>Traffic"| ECS
+    ECS ---|"Database<br/>Queries"| DB
+    ECS ---|"Fetch Secrets<br/>(DB Credentials)"| Secrets
 
-    FrontendCode --> FrontendPipeline
-    FrontendPipeline --> S3
-    FrontendPipeline --> CF
+    %% CI/CD Flow - Backend
+    BackendRepo ---|"Git Push<br/>Triggers"| BackendPipeline
+    BackendPipeline ---|"Docker Build<br/>& Push"| ECR
+    BackendPipeline ---|"Deploy New<br/>Task Definition"| ECS
 
-    %% Visual-only Legend (just floating nodes)
-    LegendTitle["Legend"]
-    Legend1["Pink = Presentation Tier"]
-    Legend2["Green = Application Tier"]
-    Legend3["Blue = Data Tier"]
-    Legend4["Yellow = DevOps / Pipelines"]
-    Legend5["Beige = Code Repositories"]
-    Legend6["Gray = User / Browser"]
+    %% CI/CD Flow - Frontend
+    FrontendRepo ---|"Git Push<br/>Triggers"| FrontendPipeline
+    FrontendPipeline ---|"Build & Deploy<br/>Static Files"| S3
+    FrontendPipeline ---|"Invalidate<br/>Cache"| CF
 
+    %% Enhanced Legend with better positioning
+    subgraph Legend["🏷️ Architecture Legend"]
+        LegendUser["👤 User Layer"]:::userStyle
+        LegendPresentation["☁️ Presentation Tier"]:::presentationStyle
+        LegendApplication["⚙️ Application Tier"]:::applicationStyle
+        LegendData["🗄️ Data Tier"]:::dataStyle
+        LegendDevOps["🔄 DevOps/CI-CD"]:::devopsStyle
+        LegendRepo["📁 Source Repositories"]:::repoStyle
+    end
+
+    %% Additional Infrastructure Details (Optional Connections)
+    ECS -.->|"Auto Scaling<br/>Based on CPU/Memory"| ALB
+    DB -.->|"Automated<br/>Backups"| DB
+    Secrets -.->|"Rotation<br/>Policy"| Secrets
 ```
 
 ## Key Technologies
