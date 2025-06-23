@@ -64,15 +64,15 @@ This diagram illustrates the intended architecture. The CI/CD and CloudFront com
 ```mermaid
 graph TD
     %% User
-    User["User (Browser)"]
+    User["User - Browser"]
 
     %% Presentation Tier
-    CF["CloudFront (Manual Setup)"]
-    S3["S3 Bucket (IaC)"]
+    CF["CloudFront - Manual Setup"]
+    S3["S3 Bucket - IaC"]
 
     %% Application Tier
     ALB["App Load Balancer"]
-    ECS["ECS Fargate (Node.js API)"]
+    ECS["ECS Fargate - Node.js API"]
     Secrets["Secrets Manager"]
 
     %% Data Tier
@@ -101,15 +101,14 @@ graph TD
     FrontendPipeline --> S3
     FrontendPipeline --> CF
 
-    %% Legend (plain, no class or emoji)
-    subgraph Legend [Legend: Color Scheme (not shown in GitHub)]
-        A1["Presentation Tier: CloudFront, S3"]
-        A2["Application Tier: ALB, ECS, Secrets"]
-        A3["Data Tier: Aurora DB"]
-        A4["DevOps: Pipelines, ECR"]
-        A5["Repositories: Backend, Frontend"]
-        A6["User: Browser"]
-    end
+    %% Visual-only Legend (just floating nodes)
+    LegendTitle["Legend"]
+    Legend1["Pink = Presentation Tier"]
+    Legend2["Green = Application Tier"]
+    Legend3["Blue = Data Tier"]
+    Legend4["Yellow = DevOps / Pipelines"]
+    Legend5["Beige = Code Repositories"]
+    Legend6["Gray = User / Browser"]
 
 ```
 
