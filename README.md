@@ -62,93 +62,66 @@ The "React-Sec-Ops" project consists of three distinct tiers:
 This diagram illustrates the intended architecture. The CI/CD and CloudFront components, while shown as automated, must be created manually as per the lab's limitations.
 
 ```mermaid
-graph TD
-    %% Legend (drawn as a separate subgraph)
-    subgraph Legend["🎨 Legend (Color Scheme)"]
-        L1["🟣 Pink = Presentation Tier"]
-        L2["🟩 Green = Application Tier"]
-        L3["🔵 Blue = Data Tier"]
-        L4["🟡 Yellow = DevOps / Pipelines"]
-        L5["🟠 Beige = Code Repositories"]
-        L6["⚪ Gray = User / Browser"]
-    end
-
+graph LR
     %% User
     User["User (Browser)"]
 
     %% Presentation Tier
-    subgraph Presentation["Presentation Tier"]
-        CF["CloudFront Distribution (Manual Setup)"]
-        S3["S3 Bucket (IaC)"]
-    end
+    CF["CloudFront (Manual)"]:::presentation
+    S3["S3 Bucket (IaC)"]:::presentation
 
     %% Application Tier
-    subgraph Application["Application Tier"]
-        ALB["Application Load Balancer"]
-        ECS["ECS Fargate (Node.js App)"]
-        Secrets["AWS Secrets Manager (IaC)"]
-    end
+    ALB["App Load Balancer"]:::application
+    ECS["ECS Fargate (Node.js API)"]:::application
+    Secrets["Secrets Manager"]:::application
 
     %% Data Tier
-    subgraph Data["Data Tier"]
-        DB["Aurora PostgreSQL Cluster"]
-    end
+    DB["Aurora PostgreSQL"]:::data
 
-    %% DevOps / CI/CD
-    subgraph DevOps["CI/CD & DevOps"]
-        subgraph Repos["Source Code Repositories"]
-            SourceCode["Backend Repo"]
-            FrontendCode["Frontend Repo"]
-        end
+    %% DevOps
+    SourceCode["Backend Repo"]:::repos
+    FrontendCode["Frontend Repo"]:::repos
 
-        BackendPipeline["Backend CI/CD Pipeline"]
-        FrontendPipeline["Frontend CI/CD Pipeline"]
-        ECR["ECR Registry (IaC)"]
-    end
+    BackendPipeline["Backend Pipeline"]:::devops
+    FrontendPipeline["Frontend Pipeline"]:::devops
+    ECR["ECR Registry"]:::devops
 
-    %% User interactions
-    User -->|HTTPS Request| CF
-    CF -->|Static Files| S3
-    CF -->|API Request| ALB
-    ALB -->|Forward to ECS| ECS
-    ECS -->|DB Ops| DB
-    ECS -->|Read Secrets| Secrets
+    %% Flow
+    User -->|HTTPS| CF
+    CF -->|Static| S3
+    CF -->|API| ALB
+    ALB --> ECS
+    ECS --> DB
+    ECS --> Secrets
 
-    %% CI/CD connections
     SourceCode --> BackendPipeline
-    BackendPipeline -->|Build & Push| ECR
+    BackendPipeline -->|Build| ECR
     BackendPipeline -->|Deploy| ECS
 
     FrontendCode --> FrontendPipeline
-    FrontendPipeline -->|Build & Deploy| S3
+    FrontendPipeline -->|Deploy| S3
     FrontendPipeline -->|Invalidate| CF
 
-    %% Color Styling
-    style CF fill:#f9f,stroke:#333,stroke-width:1px
-    style S3 fill:#f9f,stroke:#333,stroke-width:1px
+    %% Legend at bottom
+    subgraph Legend [🎨 Legend (Color Key)]
+        L1["🟣 Presentation Tier"]:::presentation
+        L2["🟩 Application Tier"]:::application
+        L3["🔵 Data Tier"]:::data
+        L4["🟡 DevOps / Pipelines"]:::devops
+        L5["🟠 Code Repositories"]:::repos
+        L6["⚪ User / Browser"]:::user
+    end
 
-    style ALB fill:#cfc,stroke:#333,stroke-width:1px
-    style ECS fill:#cfc,stroke:#333,stroke-width:1px
-    style Secrets fill:#cfc,stroke:#333,stroke-width:1px
+    %% Styles
+    classDef presentation fill:#f9f,stroke:#333;
+    classDef application fill:#cfc,stroke:#333;
+    classDef data fill:#ccf,stroke:#333;
+    classDef devops fill:#ffe599,stroke:#333;
+    classDef repos fill:#fff2cc,stroke:#333;
+    classDef user fill:#eee,stroke:#333;
 
-    style DB fill:#ccf,stroke:#333,stroke-width:1px
+    class User user
 
-    style BackendPipeline fill:#ffe599,stroke:#333,stroke-width:1px
-    style FrontendPipeline fill:#ffe599,stroke:#333,stroke-width:1px
-    style ECR fill:#ffe599,stroke:#333,stroke-width:1px
-
-    style SourceCode fill:#fff2cc,stroke:#333,stroke-width:1px
-    style FrontendCode fill:#fff2cc,stroke:#333,stroke-width:1px
-
-    style User fill:#eee,stroke:#333,stroke-width:1px
-
-    %% Legend colors
-    style L1 fill:#f9f,stroke:#999,stroke-width:1px
-    style L2 fill:#cfc,stroke:#999,stroke-width:1px
-    style L3 fill:#ccf,stroke:#999,stroke-width:1px
-    style L4 fill:#ffe599,stroke:#999,stroke-width:1px
-    style L5 fill:#fff2cc,stroke:#999,stroke-width:1px
-    style L6 fill:#eee,stroke:#999,stroke-width:1px
 ```
 
 ## Key Technologies
