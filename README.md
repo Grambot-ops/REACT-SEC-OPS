@@ -68,105 +68,108 @@ graph TB
     classDef presentationStyle fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#000
     classDef applicationStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px,color:#000
     classDef dataStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#000
-    classDef devopsStyle fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:#000
-    classDef repoStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef automatedStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px,color:#000
+    classDef manualStyle fill:#fff3e0,stroke:#ef6c00,stroke-width:3px,stroke-dasharray: 5 5,color:#000
     classDef securityStyle fill:#fce4ec,stroke:#ad1457,stroke-width:2px,color:#000
-    classDef manualStyle fill:#ffecb3,stroke:#f57f17,stroke-width:3px,stroke-dasharray: 5 5,color:#000
 
-    %% User Layer
-    subgraph UserZone["User Layer"]
-        User["User<br/>Browser"]:::userStyle
+    %% User Access
+    subgraph UserZone["User Access Layer"]
+        User["User Browser"]:::userStyle
     end
 
-    %% CDN & Frontend
-    subgraph CDNZone["Content Delivery Network"]
-        CF["CloudFront<br/>Global CDN<br/>Manual Setup"]:::manualStyle
+    %% Presentation Tier - Manual Setup Required
+    subgraph PresentationZone["Presentation Tier - Manual Setup Required"]
+        CF["CloudFront Distribution<br/>Global CDN<br/>MANUAL SETUP REQUIRED"]:::manualStyle
+        OAI["Origin Access Identity<br/>S3 Bucket Access<br/>MANUAL SETUP REQUIRED"]:::manualStyle
+        S3Frontend["S3 Bucket<br/>reactsecops-frontend-hosting<br/>Static Website<br/>OPENTOFU MANAGED"]:::automatedStyle
     end
 
-    %% Presentation Tier
-    subgraph PresentationZone["Presentation Tier"]
-        S3Web["S3 Bucket<br/>Static Website<br/>(React/HTML/CSS)"]:::presentationStyle
-    end
-
-    %% Application Tier
-    subgraph ApplicationZone["Application Tier"]
-        ALB["Application<br/>Load Balancer<br/>(Auto Scaling)"]:::applicationStyle
+    %% Application Tier - Automated
+    subgraph ApplicationZone["Application Tier - OpenTofu Managed"]
+        ALB["Application Load Balancer<br/>Auto Scaling Target<br/>OPENTOFU MANAGED"]:::automatedStyle
         
-        subgraph ECSCluster["ECS Fargate Cluster"]
-            ECS1["ECS Service 1<br/>Node.js API<br/>(Auto Scaling)"]:::applicationStyle
-            ECS2["ECS Service 2<br/>Background Jobs<br/>(Scheduled Tasks)"]:::applicationStyle
+        subgraph ECSZone["ECS Fargate Cluster"]
+            ECSCluster["ECS Cluster<br/>reactsecops-cluster<br/>OPENTOFU MANAGED"]:::automatedStyle
+            ECSService["ECS Service<br/>Node.js/Express API<br/>OPENTOFU MANAGED"]:::automatedStyle
+            ECSTask["ECS Task Definition<br/>Docker Container<br/>OPENTOFU MANAGED"]:::automatedStyle
         end
         
-        APIGateway["API Gateway<br/>REST/GraphQL<br/>(Rate Limiting)"]:::applicationStyle
+        ECR["ECR Repository<br/>Container Images<br/>OPENTOFU MANAGED"]:::automatedStyle
     end
 
-    %% Security & Secrets
-    subgraph SecurityZone["Security Layer"]
-        Secrets["Secrets Manager<br/>DB Credentials<br/>API Keys"]:::securityStyle
-        IAM["IAM Roles<br/>Service Permissions<br/>Least Privilege"]:::securityStyle
+    %% Data Tier - Automated
+    subgraph DataZone["Data Tier - OpenTofu Managed"]
+        Aurora["Aurora PostgreSQL<br/>Multi-AZ Database<br/>Private Subnets<br/>OPENTOFU MANAGED"]:::automatedStyle
+        SecretsManager["Secrets Manager<br/>Database Credentials<br/>OPENTOFU MANAGED"]:::automatedStyle
     end
 
-    %% Data Tier
-    subgraph DataZone["Data Tier"]
-        Aurora["Aurora PostgreSQL<br/>Multi-AZ Cluster<br/>(Read Replicas)"]:::dataStyle
-        ElastiCache["ElastiCache<br/>Redis Cluster<br/>(Session Store)"]:::dataStyle
-        S3Data["S3 Bucket<br/>File Storage<br/>(Backups/Assets)"]:::dataStyle
+    %% Networking - Automated
+    subgraph NetworkZone["Networking - OpenTofu Managed"]
+        VPC["VPC<br/>Isolated Network<br/>OPENTOFU MANAGED"]:::automatedStyle
+        PublicSubnets["Public Subnets<br/>ALB Placement<br/>OPENTOFU MANAGED"]:::automatedStyle
+        PrivateSubnets["Private Subnets<br/>ECS & RDS Placement<br/>OPENTOFU MANAGED"]:::automatedStyle
+        SecurityGroups["Security Groups<br/>Network Access Control<br/>OPENTOFU MANAGED"]:::automatedStyle
     end
 
-    %% CI/CD Pipeline
-    subgraph DevOpsZone["DevOps & CI/CD"]
+    %% CI/CD Pipeline - Manual Setup Required
+    subgraph CICDZone["CI/CD Pipeline - Manual Setup Required"]
         
-        subgraph SourceRepos["Source Repositories"]
-            FrontendRepo["Frontend Repo<br/>React/TypeScript<br/>(Git)"]:::repoStyle
-            BackendRepo["Backend Repo<br/>Node.js/Express<br/>(Git)"]:::repoStyle
+        subgraph SourceRepos["Source Code Repositories - MANUAL SETUP"]
+            BackendRepo["CodeCommit Repository<br/>reactsecops-backend-api-repo<br/>MANUAL SETUP REQUIRED"]:::manualStyle
+            FrontendRepo["CodeCommit Repository<br/>reactsecops-frontend-app-repo<br/>MANUAL SETUP REQUIRED"]:::manualStyle
         end
         
-        subgraph Pipelines["CI/CD Pipelines"]
-            FrontendPipeline["Frontend Pipeline<br/>Build → Test → Deploy<br/>Manual Trigger"]:::manualStyle
-            BackendPipeline["Backend Pipeline<br/>Build → Test → Deploy<br/>Manual Trigger"]:::manualStyle
+        subgraph BuildProjects["Build Projects - MANUAL SETUP"]
+            BackendBuild["CodeBuild Project<br/>reactsecops-backend-build<br/>Docker Build & Push<br/>MANUAL SETUP REQUIRED"]:::manualStyle
+            FrontendBuild["CodeBuild Project<br/>reactsecops-frontend-build<br/>React Build & Deploy<br/>MANUAL SETUP REQUIRED"]:::manualStyle
         end
         
-        ECR["ECR Registry<br/>Container Images<br/>(Private Repository)"]:::devopsStyle
+        subgraph Pipelines["Deployment Pipelines - MANUAL SETUP"]
+            BackendPipeline["CodePipeline<br/>reactsecops-backend-pipeline<br/>Source → Build → Deploy<br/>MANUAL SETUP REQUIRED"]:::manualStyle
+            FrontendPipeline["CodePipeline<br/>reactsecops-frontend-pipeline<br/>Source → Build → Deploy<br/>MANUAL SETUP REQUIRED"]:::manualStyle
+        end
     end
 
-    %% Main User Flow
-    User ---|"HTTPS"| CF
-    CF ---|"Static Files"| S3Web
-    CF ---|"API Requests"| ALB
-    ALB ---|"Route Traffic"| APIGateway
-    APIGateway ---|"Process Requests"| ECS1
-    ECS1 ---|"Background Tasks"| ECS2
+    %% Main Application Flow
+    User ---|"HTTPS Requests"| CF
+    CF ---|"Static Content<br/>(React App)"| S3Frontend
+    CF ---|"API Requests<br/>/api/*"| ALB
+    ALB ---|"Load Balanced<br/>Traffic"| ECSService
+    ECSService ---|"Container<br/>Orchestration"| ECSTask
+    ECSTask ---|"Database<br/>Queries"| Aurora
+    ECSTask ---|"Fetch DB<br/>Credentials"| SecretsManager
 
-    %% Data Connections
-    ECS1 ---|"Database Queries"| Aurora
-    ECS1 ---|"Cache Read/Write"| ElastiCache
-    ECS1 ---|"File Operations"| S3Data
-    ECS2 ---|"Batch Processing"| Aurora
+    %% CloudFront Configuration
+    CF ---|"Secure Access<br/>via OAI"| OAI
+    OAI ---|"Bucket Policy<br/>Authorization"| S3Frontend
 
-    %% Security Connections
-    ECS1 ---|"Fetch Secrets"| Secrets
-    ECS2 ---|"Fetch Secrets"| Secrets
-    ECS1 -.->|"Assume Role"| IAM
-    ECS2 -.->|"Assume Role"| IAM
+    %% CI/CD Flow - Backend
+    BackendRepo ---|"Git Push<br/>Triggers"| BackendPipeline
+    BackendPipeline ---|"Build Stage"| BackendBuild
+    BackendBuild ---|"Docker Build<br/>& Push"| ECR
+    BackendBuild ---|"Deploy New<br/>Task Definition"| ECSService
 
-    %% CI/CD Flow
-    FrontendRepo ---|"Git Push"| FrontendPipeline
-    BackendRepo ---|"Git Push"| BackendPipeline
-    
-    FrontendPipeline ---|"Deploy Static Files"| S3Web
-    FrontendPipeline ---|"Cache Invalidation"| CF
-    
-    BackendPipeline ---|"Build & Push Images"| ECR
-    BackendPipeline ---|"Deploy Services"| ECS1
-    BackendPipeline ---|"Deploy Jobs"| ECS2
+    %% CI/CD Flow - Frontend
+    FrontendRepo ---|"Git Push<br/>Triggers"| FrontendPipeline
+    FrontendPipeline ---|"Build Stage"| FrontendBuild
+    FrontendBuild ---|"Deploy Static<br/>Files"| S3Frontend
+    FrontendBuild ---|"Cache<br/>Invalidation"| CF
 
-    %% Infrastructure Monitoring (Optional)
-    ECS1 -.->|"Metrics & Logs"| CloudWatch["CloudWatch<br/>Monitoring<br/>(Alerts & Dashboards)"]:::devopsStyle
-    Aurora -.->|"Performance Metrics"| CloudWatch
+    %% Network Relationships
+    ALB -.->|"Deployed in"| PublicSubnets
+    ECSService -.->|"Deployed in"| PrivateSubnets
+    Aurora -.->|"Deployed in"| PrivateSubnets
+    SecurityGroups -.->|"Controls Access"| ECSService
+    SecurityGroups -.->|"Controls Access"| Aurora
 
-    %% Manual Setup Warning
-    subgraph Warning["Manual Setup Required"]
-        ManualNote["These components require<br/>manual configuration due to<br/>lab environment limitations:<br/><br/>• CloudFront Distribution<br/>• CI/CD Pipeline Triggers<br/>• Initial IAM Role Setup"]:::manualStyle
+    %% Deployment Constraints
+    subgraph ConstraintsZone["AWS Learner Lab Constraints"]
+        Constraint1["IAM Policy Limitations:<br/>• Explicit DENY on CodeBuild creation<br/>• Explicit DENY on CodeCommit creation<br/>• Explicit DENY on CloudFront OAI creation<br/>• Cannot be overridden by CloudFormation<br/>• Requires hybrid deployment model"]:::manualStyle
+    end
+
+    %% OpenTofu Outputs Required for Manual Setup
+    subgraph OutputsZone["OpenTofu Outputs for Manual Setup"]
+        Outputs["Required Outputs:<br/>• alb_dns_name<br/>• ecr_repo_name<br/>• ecs_cluster_name<br/>• ecs_service_name<br/>• frontend_s3_bucket_name<br/>• s3_policy_for_cloudfront_reference"]:::automatedStyle
     end
 ```
 
