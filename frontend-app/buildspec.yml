@@ -1,0 +1,22 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - echo "Installing dependencies..."
+      - cd frontend-app # Navigate into the app directory
+      - npm install
+  build:
+    commands:
+      - echo "Building the React app..."
+      - npm run build
+  post_build:
+    commands:
+      - echo "Deploying to S3..."
+      # Sync the build directory to the S3 bucket
+      - aws s3 sync build/ s3://${S3_BUCKET_NAME} --delete
+      - echo "Invalidating CloudFront cache..."
+      # Invalidate all files to ensure the new version is served
+      - aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths "/*"

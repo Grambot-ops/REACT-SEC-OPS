@@ -1,0 +1,80 @@
+# ===================================================================
+# General / OS / Editor Files
+# ===================================================================
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.idea
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===================================================================
+# Infrastructure - OpenTofu / Terraform
+# ===================================================================
+# Local OpenTofu/Terraform directories
+.terraform/
+.opentofu/
+
+# .tfstate files
+# CRITICAL: These files contain the state of your infrastructure and may include
+# sensitive data. They should NEVER be committed to version control.
+# Use a remote backend like S3 for team collaboration.
+*.tfstate
+*.tfstate.*.backup
+
+# Crash log
+crash.log
+
+# Exclude all .tfvars files to prevent accidental credential exposure.
+# Commit a ".tfvars.example" file instead.
+*.tfvars
+*.tfvars.json
+
+# Ignore plan files, as they can also contain sensitive data.
+*.tfplan
+
+# ===================================================================
+# Backend - Node.js / Express (backend-api/)
+# ===================================================================
+# Dependency directories
+backend-api/node_modules/
+
+# Environment files
+# CRITICAL: Contains secrets like database passwords and API keys.
+# NEVER commit these.
+backend-api/.env
+backend-api/.env.*
+
+# ===================================================================
+# Frontend - React (frontend-app/)
+# ===================================================================
+# Dependency directories
+frontend-app/node_modules/
+
+# Production build directory
+frontend-app/build/
+
+# Environment files
+# CRITICAL: Create React App uses these for local overrides and secrets.
+# NEVER commit these.
+frontend-app/.env.local
+frontend-app/.env.development.local
+frontend-app/.env.test.local
+frontend-app/.env.production.local
+frontend-app/.env
+
+# Test coverage reports
+frontend-app/coverage/

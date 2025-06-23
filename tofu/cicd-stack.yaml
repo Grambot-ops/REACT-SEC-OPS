@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CI/CD Pipelines, CodeCommit Repos, and CloudFront Distribution for the
+  React-Sec-Ops Project. This stack contains resources restricted by Lab IAM policies.
+
+Parameters:
+  ProjectName:
+    Type: String
+  LabRoleArn:
+    Type: String
+  BackendEcrRepoName:
+    Type: String
+  FrontendS3BucketName:
+    Type: String
+  FrontendS3BucketArn:
+    Type: String
+  EcsClusterName:
+    Type: String
+  EcsServiceName:
+    Type: String
+  EcsContainerName:
+    Type: String
+
+Resources:
+  # --- Common Artifact Store ---
+  CodePipelineArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${ProjectName}-cfn-pipeline-artifacts-${AWS::AccountId}"
+
+  # --- Frontend Delivery Layer (OAI, CloudFront, S3 Policy) ---
+  CloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "OAI for ${ProjectName} frontend"
+
+  FrontendS3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendS3BucketName
+      PolicyDocument:
+        Statement:
+          - Action: s3:GetObject
+            Effect: Allow
+            Resource: !Sub "${FrontendS3BucketArn}/*"
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOAI.S3CanonicalUserId
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub "CloudFront for ${ProjectName} frontend"
+        Origins:
+          - Id: !Sub "S3-${FrontendS3BucketName}"
+            DomainName: !Sub "${FrontendS3BucketName}.s3.${AWS::Region}.amazonaws.com"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOAI}"
+        Enabled: true
+        HttpVersion: http2
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          TargetOriginId: !Sub "S3-${FrontendS3BucketName}"
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+        Restrictions:
+          GeoRestriction:
+            RestrictionType: none
+
+  # --- Backend CI/CD ---
+  BackendCodeCommitRepo:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Sub "${ProjectName}-backend-api-repo"
+      RepositoryDescription: "Source code for the React-Sec-Ops backend API"
+
+  BackendCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${ProjectName}-backend-build"
+      ServiceRole: !Ref LabRoleArn
+      Artifacts: { Type: CODEPIPELINE }
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - { Name: AWS_ACCOUNT_ID, Value: !Ref AWS::AccountId }
+          - { Name: AWS_DEFAULT_REGION, Value: !Ref AWS::Region }
+          - { Name: IMAGE_REPO_NAME, Value: !Ref BackendEcrRepoName }
+          - { Name: IMAGE_TAG, Value: latest }
+          - { Name: CONTAINER_NAME, Value: !Ref EcsContainerName }
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: "backend-api/buildspec.yml"
+
+  BackendPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${ProjectName}-backend-pipeline"
+      RoleArn: !Ref LabRoleArn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref CodePipelineArtifactBucket
+      Stages:
+        - Name: Source
+          Actions: [ { Name: Source, ActionTypeId: { Category: Source, Owner: AWS, Provider: CodeCommit, Version: '1' }, Configuration: { RepositoryName: !GetAtt BackendCodeCommitRepo.Name, BranchName: main }, OutputArtifacts: [ { Name: source_output } ] } ]
+        - Name: Build
+          Actions: [ { Name: Build, ActionTypeId: { Category: Build, Owner: AWS, Provider: CodeBuild, Version: '1' }, Configuration: { ProjectName: !Ref BackendCodeBuildProject }, InputArtifacts: [ { Name: source_output } ], OutputArtifacts: [ { Name: build_output } ] } ]
+        - Name: Deploy
+          Actions: [ { Name: Deploy, ActionTypeId: { Category: Deploy, Owner: AWS, Provider: ECS, Version: '1' }, Configuration: { ClusterName: !Ref EcsClusterName, ServiceName: !Ref EcsServiceName, FileName: imagedefinitions.json }, InputArtifacts: [ { Name: build_output } ] } ]
+
+  # --- Frontend CI/CD ---
+  FrontendCodeCommitRepo:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Sub "${ProjectName}-frontend-app-repo"
+      RepositoryDescription: "Source code for the React-Sec-Ops frontend application"
+
+  FrontendCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${ProjectName}-frontend-build"
+      ServiceRole: !Ref LabRoleArn
+      Artifacts: { Type: CODEPIPELINE }
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        EnvironmentVariables:
+          - { Name: S3_BUCKET_NAME, Value: !Ref FrontendS3BucketName }
+          - { Name: CLOUDFRONT_DISTRIBUTION_ID, Value: !Ref CloudFrontDistribution } # Reference the distribution directly
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: "frontend-app/buildspec.yml"
+
+  FrontendPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${ProjectName}-frontend-pipeline"
+      RoleArn: !Ref LabRoleArn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref CodePipelineArtifactBucket
+      Stages:
+        - Name: Source
+          Actions: [ { Name: Source, ActionTypeId: { Category: Source, Owner: AWS, Provider: CodeCommit, Version: '1' }, Configuration: { RepositoryName: !GetAtt FrontendCodeCommitRepo.Name, BranchName: main }, OutputArtifacts: [ { Name: source_output } ] } ]
+        - Name: BuildAndDeploy
+          Actions: [ { Name: Build-And-Deploy-To-S3, ActionTypeId: { Category: Build, Owner: AWS, Provider: CodeBuild, Version: '1' }, Configuration: { ProjectName: !Ref FrontendCodeBuildProject }, InputArtifacts: [ { Name: source_output } ] } ]
+
+Outputs:
+  BackendRepoCloneUrlHttp:
+    Description: The HTTPS clone URL for the backend repository.
+    Value: !GetAtt BackendCodeCommitRepo.CloneUrlHttp
+  FrontendRepoCloneUrlHttp:
+    Description: The HTTPS clone URL for the frontend repository.
+    Value: !GetAtt FrontendCodeCommitRepo.CloneUrlHttp
+  CloudFrontDomainName:
+    Description: The domain name of the CloudFront distribution.
+    Value: !GetAtt CloudFrontDistribution.DomainName
