@@ -69,38 +69,38 @@ graph TD
 
     subgraph "AWS Cloud"
         subgraph "Presentation Tier"
-            CF[CloudFront Distribution\n(Manual Setup)]
+            CF["CloudFront Distribution (Manual Setup)"]
         end
 
         subgraph "VPC: 10.0.0.0/16 (IaC Deployed)"
             subgraph "Public Subnets"
-                ALB[Application Load Balancer]
+                ALB["Application Load Balancer"]
             end
             subgraph "Private Subnets (Application Tier)"
-                ECS[ECS Fargate Service\n(Node.js/Express Container)]
+                ECS["ECS Fargate Service (Node.js/Express Container)"]
             end
             subgraph "Private Subnets (Data Tier)"
-                DB[Aurora PostgreSQL Cluster]
+                DB["Aurora PostgreSQL Cluster"]
             end
         end
 
         subgraph "CI/CD & DevOps (Manual Setup)"
             SourceCode --> BackendPipeline
-            BackendPipeline -- Builds & Scans --> ECR[ECR Registry\n(IaC Deployed)]
+            BackendPipeline -- Builds & Scans --> ECR["ECR Registry (IaC Deployed)"]
             BackendPipeline -- Deploys --> ECS
 
             FrontendCode --> FrontendPipeline
-            FrontendPipeline -- Builds & Deploys --> S3[S3 Bucket\n(IaC Deployed)]
+            FrontendPipeline -- Builds & Deploys --> S3["S3 Bucket (IaC Deployed)"]
             FrontendPipeline -- Invalidates --> CF
 
             subgraph "Source Code Repos"
                 direction LR
-                SourceCode[Git User]
-                FrontendCode[Git User]
+                SourceCode["Git User"]
+                FrontendCode["Git User"]
             end
         end
 
-        Secrets[AWS Secrets Manager\n(IaC Deployed)]
+        Secrets["AWS Secrets Manager (IaC Deployed)"]
     end
 
     User -- HTTPS Request --> CF
