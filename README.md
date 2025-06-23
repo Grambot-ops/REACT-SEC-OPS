@@ -62,7 +62,7 @@ The "React-Sec-Ops" project consists of three distinct tiers:
 This diagram illustrates the intended architecture. The CI/CD and CloudFront components, while shown as automated, must be created manually as per the lab's limitations.
 
 ```mermaid
-graph TD
+graph TB
     %% Styling Classes
     classDef userStyle fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000
     classDef presentationStyle fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#000
@@ -70,64 +70,104 @@ graph TD
     classDef dataStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#000
     classDef devopsStyle fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:#000
     classDef repoStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
-    classDef legendStyle fill:#fafafa,stroke:#666,stroke-width:1px,color:#666,stroke-dasharray: 5 5
+    classDef securityStyle fill:#fce4ec,stroke:#ad1457,stroke-width:2px,color:#000
+    classDef manualStyle fill:#ffecb3,stroke:#f57f17,stroke-width:3px,stroke-dasharray: 5 5,color:#000
 
     %% User Layer
-    User["👤 User<br/>Browser"]:::userStyle
-
-    %% Presentation Tier
-    CF["☁️ CloudFront<br/>CDN Distribution<br/>(Manual Setup)"]:::presentationStyle
-    S3["🪣 S3 Bucket<br/>Static Website<br/>(IaC Managed)"]:::presentationStyle
-
-    %% Application Tier
-    ALB["⚖️ Application<br/>Load Balancer<br/>(Auto Scaling)"]:::applicationStyle
-    ECS["🐳 ECS Fargate<br/>Node.js API<br/>(Containerized)"]:::applicationStyle
-    Secrets["🔐 AWS Secrets<br/>Manager<br/>(Encrypted)"]:::applicationStyle
-
-    %% Data Tier
-    DB["🗄️ Aurora PostgreSQL<br/>Multi-AZ<br/>(Managed RDS)"]:::dataStyle
-
-    %% DevOps / CI/CD Pipeline
-    ECR["📦 ECR Registry<br/>Container Images<br/>(Private Repo)"]:::devopsStyle
-    BackendPipeline["🔄 Backend Pipeline<br/>CI/CD Automation<br/>(Build → Test → Deploy)"]:::devopsStyle
-    FrontendPipeline["🔄 Frontend Pipeline<br/>CI/CD Automation<br/>(Build → Deploy)"]:::devopsStyle
-
-    %% Source Code Repositories
-    BackendRepo["📁 Backend Repository<br/>Node.js Source Code<br/>(Git)"]:::repoStyle
-    FrontendRepo["📁 Frontend Repository<br/>React/Static Assets<br/>(Git)"]:::repoStyle
-
-    %% Main Application Flow
-    User ---|"HTTPS Requests"| CF
-    CF ---|"Static Assets<br/>(HTML, CSS, JS)"| S3
-    CF ---|"API Calls<br/>/api/*"| ALB
-    ALB ---|"Load Balanced<br/>Traffic"| ECS
-    ECS ---|"Database<br/>Queries"| DB
-    ECS ---|"Fetch Secrets<br/>(DB Credentials)"| Secrets
-
-    %% CI/CD Flow - Backend
-    BackendRepo ---|"Git Push<br/>Triggers"| BackendPipeline
-    BackendPipeline ---|"Docker Build<br/>& Push"| ECR
-    BackendPipeline ---|"Deploy New<br/>Task Definition"| ECS
-
-    %% CI/CD Flow - Frontend
-    FrontendRepo ---|"Git Push<br/>Triggers"| FrontendPipeline
-    FrontendPipeline ---|"Build & Deploy<br/>Static Files"| S3
-    FrontendPipeline ---|"Invalidate<br/>Cache"| CF
-
-    %% Enhanced Legend with better positioning
-    subgraph Legend["🏷️ Architecture Legend"]
-        LegendUser["👤 User Layer"]:::userStyle
-        LegendPresentation["☁️ Presentation Tier"]:::presentationStyle
-        LegendApplication["⚙️ Application Tier"]:::applicationStyle
-        LegendData["🗄️ Data Tier"]:::dataStyle
-        LegendDevOps["🔄 DevOps/CI-CD"]:::devopsStyle
-        LegendRepo["📁 Source Repositories"]:::repoStyle
+    subgraph UserZone["User Layer"]
+        User["User<br/>Browser"]:::userStyle
     end
 
-    %% Additional Infrastructure Details (Optional Connections)
-    ECS -.->|"Auto Scaling<br/>Based on CPU/Memory"| ALB
-    DB -.->|"Automated<br/>Backups"| DB
-    Secrets -.->|"Rotation<br/>Policy"| Secrets
+    %% CDN & Frontend
+    subgraph CDNZone["Content Delivery Network"]
+        CF["CloudFront<br/>Global CDN<br/>Manual Setup"]:::manualStyle
+    end
+
+    %% Presentation Tier
+    subgraph PresentationZone["Presentation Tier"]
+        S3Web["S3 Bucket<br/>Static Website<br/>(React/HTML/CSS)"]:::presentationStyle
+    end
+
+    %% Application Tier
+    subgraph ApplicationZone["Application Tier"]
+        ALB["Application<br/>Load Balancer<br/>(Auto Scaling)"]:::applicationStyle
+        
+        subgraph ECSCluster["ECS Fargate Cluster"]
+            ECS1["ECS Service 1<br/>Node.js API<br/>(Auto Scaling)"]:::applicationStyle
+            ECS2["ECS Service 2<br/>Background Jobs<br/>(Scheduled Tasks)"]:::applicationStyle
+        end
+        
+        APIGateway["API Gateway<br/>REST/GraphQL<br/>(Rate Limiting)"]:::applicationStyle
+    end
+
+    %% Security & Secrets
+    subgraph SecurityZone["Security Layer"]
+        Secrets["Secrets Manager<br/>DB Credentials<br/>API Keys"]:::securityStyle
+        IAM["IAM Roles<br/>Service Permissions<br/>Least Privilege"]:::securityStyle
+    end
+
+    %% Data Tier
+    subgraph DataZone["Data Tier"]
+        Aurora["Aurora PostgreSQL<br/>Multi-AZ Cluster<br/>(Read Replicas)"]:::dataStyle
+        ElastiCache["ElastiCache<br/>Redis Cluster<br/>(Session Store)"]:::dataStyle
+        S3Data["S3 Bucket<br/>File Storage<br/>(Backups/Assets)"]:::dataStyle
+    end
+
+    %% CI/CD Pipeline
+    subgraph DevOpsZone["DevOps & CI/CD"]
+        
+        subgraph SourceRepos["Source Repositories"]
+            FrontendRepo["Frontend Repo<br/>React/TypeScript<br/>(Git)"]:::repoStyle
+            BackendRepo["Backend Repo<br/>Node.js/Express<br/>(Git)"]:::repoStyle
+        end
+        
+        subgraph Pipelines["CI/CD Pipelines"]
+            FrontendPipeline["Frontend Pipeline<br/>Build → Test → Deploy<br/>Manual Trigger"]:::manualStyle
+            BackendPipeline["Backend Pipeline<br/>Build → Test → Deploy<br/>Manual Trigger"]:::manualStyle
+        end
+        
+        ECR["ECR Registry<br/>Container Images<br/>(Private Repository)"]:::devopsStyle
+    end
+
+    %% Main User Flow
+    User ---|"HTTPS"| CF
+    CF ---|"Static Files"| S3Web
+    CF ---|"API Requests"| ALB
+    ALB ---|"Route Traffic"| APIGateway
+    APIGateway ---|"Process Requests"| ECS1
+    ECS1 ---|"Background Tasks"| ECS2
+
+    %% Data Connections
+    ECS1 ---|"Database Queries"| Aurora
+    ECS1 ---|"Cache Read/Write"| ElastiCache
+    ECS1 ---|"File Operations"| S3Data
+    ECS2 ---|"Batch Processing"| Aurora
+
+    %% Security Connections
+    ECS1 ---|"Fetch Secrets"| Secrets
+    ECS2 ---|"Fetch Secrets"| Secrets
+    ECS1 -.->|"Assume Role"| IAM
+    ECS2 -.->|"Assume Role"| IAM
+
+    %% CI/CD Flow
+    FrontendRepo ---|"Git Push"| FrontendPipeline
+    BackendRepo ---|"Git Push"| BackendPipeline
+    
+    FrontendPipeline ---|"Deploy Static Files"| S3Web
+    FrontendPipeline ---|"Cache Invalidation"| CF
+    
+    BackendPipeline ---|"Build & Push Images"| ECR
+    BackendPipeline ---|"Deploy Services"| ECS1
+    BackendPipeline ---|"Deploy Jobs"| ECS2
+
+    %% Infrastructure Monitoring (Optional)
+    ECS1 -.->|"Metrics & Logs"| CloudWatch["CloudWatch<br/>Monitoring<br/>(Alerts & Dashboards)"]:::devopsStyle
+    Aurora -.->|"Performance Metrics"| CloudWatch
+
+    %% Manual Setup Warning
+    subgraph Warning["Manual Setup Required"]
+        ManualNote["These components require<br/>manual configuration due to<br/>lab environment limitations:<br/><br/>• CloudFront Distribution<br/>• CI/CD Pipeline Triggers<br/>• Initial IAM Role Setup"]:::manualStyle
+    end
 ```
 
 ## Key Technologies
